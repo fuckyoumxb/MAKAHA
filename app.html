@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MAKAHA项目物资管理</title>
+<meta name="theme-color" content="#1a73e8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MAKAHA物资">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --primary: #1a73e8;
+  --primary-light: #e8f0fe;
+  --success: #34a853;
+  --danger: #ea4335;
+  --warning: #f9ab00;
+  --bg: #f4f6f9;
+  --card: #ffffff;
+  --text: #202124;
+  --text-secondary: #5f6368;
+  --border: #dadce0;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --radius: 12px;
+}
+html, body { height: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  padding-bottom: 72px;
+  -webkit-tap-highlight-color: transparent;
+  font-size: 14px;
+}
+.header {
+  background: linear-gradient(135deg, #1a73e8, #0d47a1);
+  color: white; padding: 14px 16px 16px;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 12px rgba(26,115,232,0.3);
+}
+.header .top { display: flex; align-items: center; justify-content: space-between; }
+.header h1 { font-size: 18px; font-weight: 600; letter-spacing: 1px; }
+.header .subtitle { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+.sync-btn {
+  background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.4);
+  color: white; padding: 7px 12px; border-radius: 20px; font-size: 12px;
+  cursor: pointer; display: flex; align-items: center; gap: 5px; white-space: nowrap;
+}
+.sync-btn:active { background: rgba(255,255,255,0.3); }
+
+.inventory-summary {
+  margin: 12px 12px 0; background: linear-gradient(135deg, #fff, #f8fbff);
+  border-radius: var(--radius); padding: 14px 16px;
+  box-shadow: var(--shadow); border-left: 4px solid var(--primary);
+}
+.inv-title { font-size: 13px; color: var(--text-secondary); font-weight: 600; display: flex; align-items: center; gap: 6px; margin-bottom: 12px; }
+.inv-title::before { content: '📦'; font-size: 15px; }
+.inv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.inv-item { background: white; border-radius: 10px; padding: 12px 10px; text-align: center; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.inv-item .label { font-size: 12px; color: var(--text-secondary); font-weight: 500; }
+.inv-item .value { font-size: 28px; font-weight: 800; margin-top: 4px; line-height: 1.1;
+  background: linear-gradient(135deg, var(--primary), #1565c0); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.inv-item .unit { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+.inv-item.warn .value { background: linear-gradient(135deg, var(--danger), #c62828); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.inv-item.warn { border-color: #ffcdd2; background: #fff5f5; }
+.inv-item.ok .value { background: linear-gradient(135deg, var(--success), #1b5e20); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+.stat-bar { display: flex; gap: 10px; margin: 10px 12px 0; }
+.stat-box { flex: 1; background: white; border-radius: 10px; padding: 10px 12px; box-shadow: var(--shadow); border: 1px solid var(--border); text-align: center; }
+.stat-box .num { font-size: 18px; font-weight: 700; color: var(--primary); }
+.stat-box .lbl { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+.section { display: none; padding: 12px; }
+.section.active { display: block; }
+
+.search-bar { margin-bottom: 12px; position: relative; }
+.search-bar input { width: 100%; padding: 10px 14px 10px 36px; border: 1px solid var(--border); border-radius: 22px; font-size: 14px; background: white; box-shadow: var(--shadow); }
+.search-bar::before { content: '🔍'; position: absolute; left: 13px; top: 50%; transform: translateY(-50%); font-size: 14px; }
+
+.action-bar { display: flex; gap: 8px; margin-bottom: 12px; }
+.btn { flex: 1; padding: 11px 16px; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.15s; -webkit-tap-highlight-color: transparent; }
+.btn-primary { background: var(--primary); color: white; box-shadow: 0 3px 10px rgba(26,115,232,0.35); }
+.btn-primary:active { transform: scale(0.97); }
+.btn-outline { background: white; color: var(--primary); border: 1px solid var(--primary); box-shadow: var(--shadow); }
+.btn-outline:active { transform: scale(0.97); }
+
+.record-list { display: flex; flex-direction: column; gap: 10px; }
+.record-card { background: var(--card); border-radius: 10px; padding: 8px 12px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+.record-card .rc-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.record-card .rc-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.record-card .rc-time { font-size: 11px; color: var(--text-secondary); }
+.record-card .rc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 10px; font-size: 12.5px; }
+.record-card .rc-grid .k { color: var(--text-secondary); }
+.record-card .rc-grid .v { color: var(--text); font-weight: 500; word-break: break-all; }
+.record-card .rc-grid .full { grid-column: 1 / -1; }
+.record-card .rc-qty { color: var(--primary); font-weight: 700; }
+.record-card .rc-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border); }
+.record-card .rc-foot button { padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; font-size: 13px; cursor: pointer; color: var(--text-secondary); }
+.record-card .rc-foot button.del { color: var(--danger); border-color: #ffcdd2; background: #fff5f5; }
+.record-card .rc-foot button:active { transform: scale(0.97); }
+
+/* 最近 / 全部 分组与折叠 */
+.group-title { font-size: 14px; font-weight: 700; color: var(--primary); margin: 18px 0 10px; padding: 9px 12px; background: var(--primary-light); border-radius: 8px; box-shadow: var(--shadow); }
+.collapse-block { margin-top: 8px; }
+.collapse-head { display: flex; justify-content: space-between; align-items: center; background: #f0f4fb; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 13px; font-weight: 600; color: var(--text); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.collapse-head:active { background: #e6edf9; }
+.collapse-head .count { display: inline-block; min-width: 18px; padding: 0 6px; margin-left: 4px; background: var(--primary); color: #fff; border-radius: 10px; font-size: 11px; text-align: center; }
+.collapse-head .arrow { color: var(--text-secondary); font-size: 12px; transition: transform 0.18s; }
+.collapse-body { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+.collapse-body.collapsed { display: none; }
+.icon-btn { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--border); background: white; cursor: pointer; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+.icon-btn:active { background: var(--bg); }
+.empty { text-align: center; color: var(--text-secondary); padding: 40px 16px; font-size: 13px; }
+
+.tab-bar { position: fixed; bottom: 0; left: 0; right: 0; display: flex; background: white; z-index: 200; box-shadow: 0 -2px 12px rgba(0,0,0,0.08); border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom); }
+.tab-btn { flex: 1; padding: 9px 4px 7px; border: none; background: none; font-size: 12px; color: var(--text-secondary); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; transition: all 0.2s; -webkit-tap-highlight-color: transparent; }
+.tab-btn .icon { font-size: 22px; line-height: 1; }
+.tab-btn.active { color: var(--primary); }
+.tab-btn.active .icon { transform: scale(1.12); }
+
+/* Modal */
+.modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 300; display: none; align-items: flex-end; justify-content: center; }
+.modal-mask.show { display: flex; }
+.modal { background: white; width: 100%; max-width: 560px; border-radius: 16px 16px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); max-height: 88vh; overflow-y: auto; animation: slideUp 0.25s ease; }
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.modal h3 { font-size: 16px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+.modal .close-x { margin-left: auto; font-size: 20px; color: var(--text-secondary); cursor: pointer; line-height: 1; }
+.form-row { margin-bottom: 12px; }
+.form-row label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 5px; font-weight: 500; }
+.form-row input, .form-row textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; font-family: inherit; background: #fafafa; }
+.form-row input:focus, .form-row textarea:focus { outline: none; border-color: var(--primary); background: white; }
+.form-row textarea { resize: vertical; min-height: 44px; }
+.sel { width: 100%; padding: 10px 34px 10px 12px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; font-family: inherit; background-color: #fafafa; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='%235f6368' d='M1 1l5 5 5-5'/></svg>"); background-repeat: no-repeat; background-position: right 12px center; }
+.sel:focus { outline: none; border-color: var(--primary); background-color: white; }
+.opt-block { border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 12px; background: #fafafa; }
+.opt-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+.opt-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.opt-chip { display: inline-flex; align-items: center; gap: 4px; background: white; border: 1px solid var(--border); border-radius: 16px; padding: 4px 4px 4px 10px; font-size: 12px; }
+.opt-chip button { border: none; background: #f1f3f4; color: var(--text-secondary); width: 18px; height: 18px; border-radius: 50%; cursor: pointer; font-size: 12px; line-height: 1; }
+.opt-chip button:active { background: #e0e0e0; }
+.opt-empty { font-size: 12px; color: var(--text-secondary); }
+.opt-add { display: flex; gap: 8px; }
+.opt-add input { flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; }
+.opt-add button { padding: 8px 14px; border: none; background: var(--primary); color: white; border-radius: 8px; font-size: 13px; cursor: pointer; }
+.modal-actions { display: flex; gap: 10px; margin-top: 6px; }
+.modal-actions .btn { padding: 12px; }
+
+.sync-tip { background: #fff8e1; border: 1px solid #ffe082; border-radius: 10px; padding: 10px 12px; font-size: 12px; color: #7a5c00; line-height: 1.6; margin-bottom: 14px; }
+.sync-opt { display: flex; flex-direction: column; gap: 10px; }
+.sync-opt button { width: 100%; text-align: left; padding: 14px; border-radius: 12px; border: 1px solid var(--border); background: white; font-size: 14px; cursor: pointer; display: flex; align-items: center; gap: 12px; }
+.sync-opt button:active { background: var(--bg); }
+.sync-opt button .emoji { font-size: 22px; }
+.sync-opt button .t { font-weight: 600; color: var(--text); }
+.sync-opt button .d { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+.toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.82); color: white; padding: 11px 20px; border-radius: 22px; font-size: 13px; z-index: 400; opacity: 0; transition: opacity 0.25s; pointer-events: none; max-width: 86%; text-align: center; }
+.toast.show { opacity: 1; }
+
+.hidden-file { display: none; }
+.install-tip{display:flex;align-items:center;gap:8px;background:var(--primary);color:#fff;font-size:12.5px;line-height:1.4;padding:9px 12px;}
+.install-tip span{flex:1;}
+.install-tip button{flex:none;background:rgba(255,255,255,.22);border:none;color:#fff;padding:5px 12px;border-radius:7px;font-size:12px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.install-tip button:active{transform:scale(.96);}
+
+/* 主物资 hero 卡片 */
+.inv-item.inv-hero { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; text-align: left; padding: 16px 18px; }
+.inv-item.inv-hero .hero-left { display: flex; flex-direction: column; gap: 3px; }
+.inv-item.inv-hero .label { font-size: 15px; display: flex; align-items: center; gap: 8px; }
+.inv-item.inv-hero .value { font-size: 38px; margin-top: 0; }
+.inv-item.inv-hero .unit { font-size: 12px; color: var(--text-secondary); margin-top: 0; }
+.hero-tag { font-size: 10px; background: var(--primary-light); color: var(--primary); padding: 2px 9px; border-radius: 99px; font-weight: 700; letter-spacing: .04em; }
+
+/* 更多物资按钮 + 表格 */
+.more-inv-btn { width: 100%; margin-top: 12px; padding: 11px; background: var(--primary-light); color: var(--primary); border: 1px solid #d3e3fd; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; transition: background .15s; }
+.more-inv-btn:active { background: #d9e8fd; }
+.inv-more-table { margin-top: 10px; }
+.inv-more-table.collapsed { display: none; }
+.inv-more-table table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+.inv-more-table th { font-size: 11px; color: var(--text-secondary); background: #f5f8fd; padding: 9px 12px; text-align: left; font-weight: 600; }
+.inv-more-table td { font-size: 13px; padding: 9px 12px; border-top: 1px solid var(--border); }
+.inv-more-table td.num { font-weight: 800; text-align: right; font-size: 15px; }
+.inv-more-table tr.warn td.num { color: var(--danger); }
+.inv-more-table tr.ok td.num { color: var(--success); }
+.inv-more-table tr:first-child td { border-top: none; }
+.inv-more-table .empty { font-size: 12.5px; color: var(--text-secondary); text-align: center; padding: 16px; background: #fff; border: 1px solid var(--border); border-radius: 10px; }
+
+/* 帮助弹窗内容 */
+.help-card { background: #f7f9fc; border: 1px solid #eef0f3; border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+.help-h2 { font-size: 15px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+.help-card .desc { font-size: 13.5px; line-height: 1.75; color: var(--text-secondary); }
+.help-card .desc b { color: var(--text); }
+.help-feats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.help-feat { background: #fff; border: 1px solid #eef0f3; border-radius: 10px; padding: 12px 8px; text-align: center; }
+.help-feat .ic { font-size: 24px; }
+.help-feat .t { font-size: 13px; font-weight: 600; margin-top: 4px; }
+.help-feat .d { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+.help-steps { counter-reset: s; list-style: none; margin: 0; padding: 0; }
+.help-steps li { position: relative; padding: 9px 0 9px 34px; font-size: 13.5px; color: var(--text); line-height: 1.55; border-bottom: 1px dashed #eee; }
+.help-steps li:last-child { border-bottom: none; }
+.help-steps li::before { counter-increment: s; content: counter(s); position: absolute; left: 0; top: 9px; width: 22px; height: 22px; background: var(--primary); color: #fff; border-radius: 50%; font-size: 12px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+.help-tip { font-size: 12px; color: var(--text-secondary); line-height: 1.7; text-align: center; padding: 4px 0 2px; }
+</style>
+<script src="https://beacon.cdn.qq.com/sdk/4.5.9/beacon_web.min.js"></script>
+<script>
+(function(){
+  try{
+    var beacon=new BeaconAction({
+      appkey:'0WEB06U85YBSLJNL',
+      versionCode:'1.0.0',
+      channelID:'share',
+      delay:1000,
+      sessionDuration:30*60*1000,
+      isOversea:false,
+      needReportRqdEvent:false
+    });
+    beacon.onDirectUserAction('preview_page_view',{
+      'url':location.href,
+      'referrer':document.referrer,
+      'title':document.title,
+      'sandbox_id':'044e7754beb6415788c9c38c7dc64eea'
+    });
+  }catch(e){}
+})();
+</script></head>
+<body>
+<div id="installTip" class="install-tip" style="display:none">
+  <span>📲 添加到主屏幕：浏览器菜单选「添加到主屏幕」，以后像 App 一样直接打开，不再显示网址</span>
+  <button onclick="closeInstallTip()">知道了</button>
+</div>
+
+<div class="header">
+  <div class="top">
+    <div>
+      <h1>MAKAHA项目物资管理</h1>
+      <div class="subtitle">物资入库 / 领用 · 多人台账</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="sync-btn" onclick="openHelp()">❓ 帮助</button>
+      <button class="sync-btn" onclick="openOpt()">⚙ 管理</button>
+      <button class="sync-btn" onclick="openSync()">⇅ 同步</button>
+    </div>
+  </div>
+</div>
+
+<div class="inventory-summary" id="invSummary">
+  <div class="inv-title">当前库存（实时计算）</div>
+  <div class="inv-grid" id="invGrid"></div>
+  <button class="more-inv-btn" id="moreInvBtn" onclick="toggleInvMore()">更多物资 ▾</button>
+  <div class="inv-more-table collapsed" id="invMoreTable"></div>
+</div>
+
+<div class="stat-bar">
+  <div class="stat-box"><div class="num" id="statInQty">0</div><div class="lbl">累计入库 (L)</div></div>
+  <div class="stat-box"><div class="num" id="statOutQty">0</div><div class="lbl">累计领用 (L)</div></div>
+  <div class="stat-box"><div class="num" id="statInCnt">0</div><div class="lbl">入库笔数</div></div>
+  <div class="stat-box"><div class="num" id="statOutCnt">0</div><div class="lbl">领用笔数</div></div>
+</div>
+
+<!-- 入库 -->
+<section class="section active" id="sec-inbound">
+  <div class="search-bar"><input id="searchIn" placeholder="搜索物资名 / 记录人 / 部门" oninput="renderInbound()"></div>
+  <div class="action-bar">
+    <button class="btn btn-primary" onclick="openForm('inbound')">＋ 新增入库</button>
+    <button class="btn btn-outline" onclick="exportCSV('inbound')">导出CSV</button>
+  </div>
+  <div class="collapse-block">
+    <div class="collapse-head" onclick="toggleAll('inbound')">
+      <span>全部记录<span class="count" id="inboundAllCount">0</span></span>
+      <span class="arrow" id="inboundArrow">▸</span>
+    </div>
+    <div class="collapse-body collapsed" id="listInboundAll"></div>
+  </div>
+  <div class="group-title">最近记录（最新 5 条）</div>
+  <div class="record-list" id="listInboundRecent"></div>
+</section>
+
+<!-- 领用 -->
+<section class="section" id="sec-outbound">
+  <div class="search-bar"><input id="searchOut" placeholder="搜索物资名 / 记录人 / 设备" oninput="renderOutbound()"></div>
+  <div class="action-bar">
+    <button class="btn btn-primary" onclick="openForm('outbound')">＋ 新增领用</button>
+    <button class="btn btn-outline" onclick="exportCSV('outbound')">导出CSV</button>
+  </div>
+  <div class="collapse-block">
+    <div class="collapse-head" onclick="toggleAll('outbound')">
+      <span>全部记录<span class="count" id="outboundAllCount">0</span></span>
+      <span class="arrow" id="outboundArrow">▸</span>
+    </div>
+    <div class="collapse-body collapsed" id="listOutboundAll"></div>
+  </div>
+  <div class="group-title">最近记录（最新 5 条）</div>
+  <div class="record-list" id="listOutboundRecent"></div>
+  </div>
+</section>
+
+<!-- 底部切换 -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('inbound')"><span class="icon">📥</span>物资入库</button>
+  <button class="tab-btn" onclick="switchTab('outbound')"><span class="icon">📤</span>物资领用</button>
+</div>
+
+<!-- 新增/编辑 弹窗 -->
+<div class="modal-mask" id="formMask">
+  <div class="modal">
+    <h3 id="formTitle">＋ 新增入库<span class="close-x" onclick="closeForm()">×</span></h3>
+    <input type="hidden" id="fId">
+    <input type="hidden" id="fType">
+    <div class="form-row">
+      <label>时间</label>
+      <input type="datetime-local" id="fTime" class="sel">
+    </div>
+    <div class="form-row">
+      <label>物资名称</label>
+      <select id="fName" class="sel" onchange="onNameChange(this)"></select>
+    </div>
+    <div class="form-row">
+      <label>单位</label>
+      <select id="fUnit" class="sel" onchange="onSelectAdd(this,'unit')"></select>
+    </div>
+    <div class="form-row">
+      <label id="fQtyLabel">数量</label>
+      <input id="fQty" type="number" inputmode="decimal" placeholder="0">
+    </div>
+    <div class="form-row" id="fDeptRow">
+      <label>部门</label>
+      <select id="fDept" class="sel" onchange="onSelectAdd(this,'dept')"></select>
+    </div>
+    <div class="form-row" id="fEquipRow" style="display:none">
+      <label>领用设备</label>
+      <select id="fEquip" class="sel" onchange="onSelectAdd(this,'equip')"></select>
+    </div>
+    <div class="form-row">
+      <label>记录人</label>
+      <input id="fRec" placeholder="记录人姓名">
+    </div>
+    <div class="form-row">
+      <label id="fNoteLabel">备注</label>
+      <textarea id="fNote" placeholder="备注说明"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="saveForm()">保存</button>
+      <button class="btn btn-outline" onclick="closeForm()">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- 同步 弹窗 -->
+<div class="modal-mask" id="syncMask">
+  <div class="modal">
+    <h3>⇅ 数据同步<span class="close-x" onclick="closeSync()">×</span></h3>
+    <div class="sync-tip" id="cloudStatTip"></div>
+    <div class="sync-tip">
+      <b>多人协作方式：</b><br>
+      1. 一人点「导出全部数据」把 JSON 发给队友；<br>
+      2. 队友点「导入数据」选择该文件即可同步；<br>
+      3. 之后任何人新增/修改，重复导出→导入即可保持台账一致。
+    </div>
+    <div class="sync-opt">
+      <button onclick="exportAll()"><span class="emoji">📤</span><span><span class="t">导出全部数据 (JSON)</span><span class="d">包含入库 + 领用，发给队友导入</span></span></button>
+      <button onclick="triggerImport()"><span class="emoji">📥</span><span><span class="t">导入数据 (JSON)</span><span class="d">选择队友发来的文件，合并到本地</span></span></button>
+      <button onclick="exportCSV('inbound')"><span class="emoji">📊</span><span><span class="t">导出入库表 (CSV)</span><span class="d">用 Excel 打开的表格</span></span></button>
+      <button onclick="exportCSV('outbound')"><span class="emoji">📊</span><span><span class="t">导出领用表 (CSV)</span><span class="d">用 Excel 打开的表格</span></span></button>
+    </div>
+    <input type="file" id="importFile" class="hidden-file" accept=".json,application/json" onchange="doImport(event)">
+  </div>
+</div>
+
+<!-- 选项管理 弹窗 -->
+<div class="modal-mask" id="optMask">
+  <div class="modal">
+    <h3>⚙ 下拉选项管理<span class="close-x" onclick="closeOpt()">×</span></h3>
+    <div class="sync-tip">在这里统一管理「物资名称 / 部门 / 领用设备」的下拉选项。删除某项后，历史记录中已使用该值的记录仍会保留显示，仅下拉列表里不再出现。</div>
+    <div id="optBody"></div>
+  </div>
+</div>
+
+<!-- 帮助 弹窗 -->
+<div class="modal-mask" id="helpMask">
+  <div class="modal">
+    <h3>📋 项目说明 / 使用帮助<span class="close-x" onclick="closeHelp()">×</span></h3>
+    <div id="helpBody"></div>
+    <div class="modal-actions"><button class="btn btn-outline" onclick="closeHelp()" style="flex:1">关闭</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ===================== 配置 / 存储 ===================== */
+const LS_IN = 'ztk_inbound_v1';
+const LS_OUT = 'ztk_outbound_v1';
+
+/* 内置示例数据（首次打开时写入，之后以本地为准） */
+const SEED_INBOUND = [
+  {"time":"2026-07-15 16:00","name":"柴油","unit":"L","qty":260,"dept":"MAKAHA钻探队","rec":"莫天宇","note":"随车吊返程奎鲁加油"},
+  {"time":"2026-07-15 18:00","name":"柴油","unit":"L","qty":800,"dept":"MAKAHA钻探队","rec":"莫天宇","note":""},
+  {"time":"2026-07-19 17:00","name":"柴油","unit":"L","qty":1040,"dept":"MAKAHA钻探队","rec":"莫天宇","note":"新增1个油桶"},
+  {"time":"2026-07-23 09:00","name":"柴油","unit":"L","qty":80,"dept":"MAKAHA钻探队","rec":"莫天宇","note":""},
+  {"time":"2026-07-23 18:00","name":"柴油","unit":"L","qty":910,"dept":"MAKAHA钻探队","rec":"莫天宇","note":""},
+  {"time":"2026-07-27 18:00","name":"柴油","unit":"L","qty":1130,"dept":"MAKAHA钻探队","rec":"莫天宇","note":""},
+  {"time":"2026-07-30 18:00","name":"柴油","unit":"L","qty":1040,"dept":"MAKAHA钻探队","rec":"莫天宇","note":""}
+];
+const SEED_OUTBOUND = [
+  {"time":"2026-07-15 16:00","name":"柴油","unit":"L","qty":260,"equip":"随车吊","rec":"莫天宇","note":"随车吊加油（返回奎鲁）"},
+  {"time":"2026-07-15 18:00 ~ 2026-07-17 15:00","name":"柴油","unit":"L","qty":550,"equip":"HH-6E钻机、福特皮卡","rec":"莫天宇","note":"7.18日开始记录物资台账，无具体领用数据"},
+  {"time":"2026-07-17 16:00","name":"柴油","unit":"L","qty":25,"equip":"XY-44CTL钻机","rec":"莫天宇","note":"钻机施工"},
+  {"time":"2026-07-18 07:00","name":"柴油","unit":"L","qty":150,"equip":"HH-6E钻机","rec":"莫天宇","note":"钻机施工"},
+  {"time":"2026-07-18 07:00","name":"柴油","unit":"L","qty":50,"equip":"XY-44CTL钻机","rec":"莫天宇","note":""},
+  {"time":"2026-07-18 13:00","name":"柴油","unit":"L","qty":50,"equip":"福特皮卡","rec":"莫天宇","note":"皮卡加油"},
+  {"time":"2026-07-19 06:00","name":"柴油","unit":"L","qty":125,"equip":"HH-6E钻机","rec":"莫天宇","note":"钻机施工"},
+  {"time":"2026-07-19 18:00","name":"柴油","unit":"L","qty":125,"equip":"HH-6E钻机","rec":"莫天宇","note":"钻机施工"},
+  {"time":"2026-07-20 06:00","name":"柴油","unit":"L","qty":100,"equip":"HH-6E钻机","rec":"莫天宇","note":""},
+  {"time":"2026-07-20 08:00","name":"柴油","unit":"L","qty":50,"equip":"福特皮卡","rec":"莫天宇","note":"皮卡加油（哈拉雷往返）"},
+  {"time":"2026-07-21 06:00","name":"柴油","unit":"L","qty":200,"equip":"HH-6E钻机","rec":"莫天宇","note":"钻机施工"},
+  {"time":"2026-07-22 10:00","name":"柴油","unit":"L","qty":30,"equip":"丰田单排皮卡","rec":"莫天宇","note":"皮卡加油（返回哈拉雷）"},
+  {"time":"2026-07-23 09:00","name":"柴油","unit":"L","qty":50,"equip":"福特皮卡","rec":"莫天宇","note":"皮卡加油（返回奎鲁）"}
+];
+
+/* ====== 云端同步（Supabase）配置 ======
+   把下面两项换成你的 Supabase 项目值即可开启「多人实时同步」；
+   两项留空（默认）则应用仅用本机存储，离线可用、互不联通。 */
+const SUPABASE_URL = 'https://bmerhqgwrbmqyscaajxa.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJtZXJocWd3cmJtcXlzY2FhanhhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5NjY4NTUsImV4cCI6MjEwMjU0Mjg1NX0.YXXPRbIULNaJJiJATK3qYwUY28oUFj1lLNy9NHtUBac';
+const CLOUD = !!(SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase);
+const sb = CLOUD ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+/* 读取本地数据，首次写入种子 */
+function load(type){
+  const key = type === 'inbound' ? LS_IN : LS_OUT;
+  let raw = localStorage.getItem(key);
+  if (raw === null) {
+    const seed = type === 'inbound' ? SEED_INBOUND : SEED_OUTBOUND;
+    const data = seed.map((r,i)=>({ id: (type==='inbound'?'ib':'ob') + (i+1), ...r }));
+    localStorage.setItem(key, JSON.stringify(data));
+    return data;
+  }
+  try { return JSON.parse(raw) || []; } catch(e){ return []; }
+}
+function save(type, data){
+  localStorage.setItem(type === 'inbound' ? LS_IN : LS_OUT, JSON.stringify(data));
+  cloudPush();   // 改动后推送到云端（若已开启）
+}
+
+/* ===================== 云端读写（Supabase） ===================== */
+async function cloudPush(){
+  if(!CLOUD || !sb) return;
+  try{
+    const rows = inbound.concat(outbound).map(r=>({ id:r.id, type: r.id.startsWith('ib')?'inbound':'outbound', payload:r }));
+    if(rows.length){
+      await sb.from('records').upsert(rows, { onConflict:'id' });
+      const list = rows.map(r=>`"${String(r.id).replace(/"/g,'\\"')}"`).join(',');
+      await sb.from('records').delete().not('id','in',`(${list})`);
+    }
+    const opts = {}; for(const k in OPT_KEYS){ opts[k]=getOpts(k); }
+    await sb.from('app_meta').upsert({ key:'options', payload:opts }, { onConflict:'key' });
+    await sb.from('app_meta').upsert({ key:'materialUnits', payload:getAllMaterialUnits() }, { onConflict:'key' });
+  }catch(e){ console.warn('云端推送失败：', e); }
+}
+async function cloudPull(){
+  if(!CLOUD || !sb) return;
+  const { data, error } = await sb.from('records').select('*');
+  if(error) throw error;
+  inbound = (data||[]).filter(r=>r.type==='inbound').map(r=>r.payload);
+  outbound = (data||[]).filter(r=>r.type==='outbound').map(r=>r.payload);
+  const { data:m } = await sb.from('app_meta').select('*');
+  (m||[]).forEach(row=>{
+    if(row.key==='options'){ for(const k in (row.payload||{})){ setOpts(k, row.payload[k]); } }
+    if(row.key==='materialUnits'){ localStorage.setItem(MAT_UNIT_KEY, JSON.stringify(row.payload||{})); }
+  });
+}
+function subscribeRealtime(){
+  if(!CLOUD || !sb) return;
+  sb.channel('public:state')
+    .on('postgres_changes', { event:'*', schema:'public', table:'records' }, ()=>{ cloudPull().then(renderAll).catch(()=>{}); })
+    .on('postgres_changes', { event:'*', schema:'public', table:'app_meta' }, ()=>{ cloudPull().then(renderAll).catch(()=>{}); })
+    .subscribe();
+}
+async function bootstrap(){
+  if(CLOUD && sb){
+    try{
+      const { data:existing } = await sb.from('records').select('id').limit(1);
+      if(!existing || existing.length===0){
+        inbound = SEED_INBOUND.map((r,i)=>({ id:'ib'+(i+1), ...r }));
+        outbound = SEED_OUTBOUND.map((r,i)=>({ id:'ob'+(i+1), ...r }));
+        for(const k in OPT_DEFAULTS) setOpts(k, OPT_DEFAULTS[k].slice());
+        localStorage.setItem(MAT_UNIT_KEY, JSON.stringify({}));
+        syncOptsFromData(); ensureMaterialUnits();
+        await cloudPush();
+      } else {
+        await cloudPull();
+        syncOptsFromData(); ensureMaterialUnits();
+      }
+      subscribeRealtime();
+    }catch(e){
+      console.warn('云端初始化失败，回退本机存储：', e);
+      localInit();
+    }
+  } else {
+    localInit();
+  }
+  renderAll();
+  maybeShowInstallTip();
+}
+function localInit(){
+  inbound = load('inbound');
+  outbound = load('outbound');
+  syncOptsFromData(); ensureMaterialUnits();
+}
+
+let inbound = [];
+let outbound = [];
+const allCollapsed = { inbound: true, outbound: true };
+
+/* ===================== 下拉选项（物资名称/部门/领用设备） ===================== */
+const OPT_KEYS = { name: 'ztk_opts_name', dept: 'ztk_opts_dept', equip: 'ztk_opts_equip', unit: 'ztk_opts_unit' };
+const OPT_DEFAULTS = {
+  name: ['柴油'],
+  dept: ['MAKAHA钻探队'],
+  equip: ['HH-6E钻机','XY-44CTL钻机','福特皮卡','丰田单排皮卡','随车吊'],
+  unit: ['L','个','箱','kg','吨','桶','台','根','米','卷','套','袋']
+};
+function getOpts(k){
+  let v = localStorage.getItem(OPT_KEYS[k]);
+  if (v === null) { v = OPT_DEFAULTS[k].slice(); localStorage.setItem(OPT_KEYS[k], JSON.stringify(v)); }
+  else { try { v = JSON.parse(v) || []; } catch(e){ v = []; } }
+  return v;
+}
+function setOpts(k, arr){ localStorage.setItem(OPT_KEYS[k], JSON.stringify(arr)); }
+function addOpt(k, val){ val = (val||'').trim(); if(!val) return false; let a = getOpts(k); if(!a.includes(val)){ a.push(val); setOpts(k, a); } return true; }
+function delOpt(k, val){ setOpts(k, getOpts(k).filter(x=>x!==val)); }
+/* 启动时把已有数据里的值补进选项，避免历史记录在下拉里消失 */
+function syncOptsFromData(){
+  inbound.forEach(r=>{ if(r.name) addOpt('name', r.name); if(r.dept) addOpt('dept', r.dept); if(r.unit) addOpt('unit', r.unit); });
+  outbound.forEach(r=>{ if(r.name) addOpt('name', r.name); if(r.equip) addOpt('equip', r.equip); if(r.unit) addOpt('unit', r.unit); });
+}
+/* 启动时根据历史记录补全各物资的默认单位（已有记录但无显式单位映射时） */
+function deriveMaterialUnit(name){
+  let best='', bestT='';
+  inbound.concat(outbound).forEach(r=>{
+    if(r.name===name && r.unit){ const t=parseTimeStart(r.time); if(t>=bestT){ bestT=t; best=r.unit; } }
+  });
+  return best;
+}
+function ensureMaterialUnits(){
+  const m = getAllMaterialUnits();
+  let changed = false;
+  getOpts('name').forEach(n=>{
+    if(!m[n]){ const u = deriveMaterialUnit(n); if(u){ m[n]=u; changed=true; } }
+  });
+  if(changed) localStorage.setItem(MAT_UNIT_KEY, JSON.stringify(m));
+}
+/* 填充下拉，末尾带「➕ 新增选项…」；若当前值不在列表中则前置保留 */
+function fillSelect(sel, k, current){
+  const a = getOpts(k);
+  let html = a.map(o=>`<option value="${esc(o)}" ${o===current?'selected':''}>${esc(o)}</option>`).join('');
+  html += `<option value="__add__">➕ 新增选项…</option>`;
+  sel.innerHTML = html;
+  if (current && !a.includes(current)) {
+    const opt = document.createElement('option');
+    opt.value = current; opt.textContent = current + '（旧）'; opt.selected = true;
+    sel.insertBefore(opt, sel.firstChild);
+  }
+}
+function onSelectAdd(sel, k){
+  if (sel.value === '__add__') {
+    const label = k==='name' ? '物资名称' : (k==='dept' ? '部门' : '领用设备');
+    const v = prompt('输入新的' + label + '：');
+    if (v && v.trim()) addOpt(k, v.trim());
+    fillSelect(sel, k, (v && v.trim()) ? v.trim() : '');
+  }
+}
+
+/* 物资默认单位：物资名称 -> 默认单位 的映射（localStorage 持久化） */
+const MAT_UNIT_KEY = 'ztk_material_unit';
+function getAllMaterialUnits(){ try { return JSON.parse(localStorage.getItem(MAT_UNIT_KEY)) || {}; } catch(e){ return {}; } }
+function getMaterialUnit(name){ const m=getAllMaterialUnits(); return m[name]||''; }
+function setMaterialUnit(name, unit){ const m=getAllMaterialUnits(); if(name){ m[name]=unit; localStorage.setItem(MAT_UNIT_KEY, JSON.stringify(m)); } }
+
+/* 新增物资名称时一并设置默认单位，并自动回填单位下拉；选中已有物资时自动带出其默认单位 */
+function onNameChange(sel){
+  if (sel.value === '__add__') {
+    const nm = (prompt('输入新的物资名称：')||'').trim();
+    if (!nm) { fillSelect(sel,'name',''); return; }
+    const defUnit = document.getElementById('fUnit').value || 'L';
+    const u = ((prompt('设置该物资的默认单位（可选，如 L / 个 / 箱）：', defUnit)||'')).trim() || defUnit;
+    addOpt('name', nm);
+    if (u) { addOpt('unit', u); setMaterialUnit(nm, u); }
+    cloudPush();
+    fillSelect(sel, 'name', nm);
+    fillSelect(document.getElementById('fUnit'), 'unit', u || 'L');
+    return;
+  }
+  /* 选中已有物资 → 自动带出其默认单位 */
+  const u = getMaterialUnit(sel.value);
+  if (u) fillSelect(document.getElementById('fUnit'), 'unit', u);
+}
+
+/* ===================== 时间辅助（datetime-local 与存储格式互转） ===================== */
+function pad(n){ return String(n).padStart(2,'0'); }
+function toDTL(str){ const m = String(str||'').match(/(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/); return m ? (m[1]+'T'+m[2]) : ''; }
+function fromDTL(v){ return v ? v.replace('T',' ') : ''; }
+function nowDTL(){ const d = new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes()); }
+function nowDisp(){ const d = new Date(); return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes()); }
+
+/* ===================== 工具 ===================== */
+function uid(type){ return (type==='inbound'?'ib':'ob') + Date.now() + Math.floor(Math.random()*1000); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2200); }
+function parseTimeStart(t){ const m=String(t||'').match(/\d{4}-\d{2}-\d{2}/); return m?m[0]:'0000-00-00'; }
+function fmtNum(n){ n=Number(n)||0; return n % 1 === 0 ? String(n) : n.toFixed(2); }
+
+/* ===================== 库存计算 ===================== */
+function computeInventory(){
+  const map = {};
+  inbound.forEach(r=>{
+    const n=r.name||'未命名';
+    if(!map[n]) map[n]={name:n,unit:r.unit||'',in:0,out:0};
+    map[n].in += Number(r.qty)||0;
+    if(r.unit) map[n].unit=r.unit;
+  });
+  outbound.forEach(r=>{
+    const n=r.name||'未命名';
+    if(!map[n]) map[n]={name:n,unit:r.unit||'',in:0,out:0};
+    map[n].out += Number(r.qty)||0;
+    if(r.unit) map[n].unit=r.unit;
+  });
+  return Object.values(map).map(m=>({...m, stock: m.in - m.out})).sort((a,b)=>b.stock-a.stock);
+}
+
+/* 计算每条入库记录当时的库存（按时间排序的运行余额） */
+function computeRunningStock(){
+  const events=[];
+  inbound.forEach(r=>events.push({type:'in',time:r.time,qty:Number(r.qty)||0,ref:r.id,name:r.name||'未命名'}));
+  outbound.forEach(r=>events.push({type:'out',time:r.time,qty:Number(r.qty)||0,ref:r.id,name:r.name||'未命名'}));
+  events.sort((a,b)=> parseTimeStart(a.time)===parseTimeStart(b.time) ? String(a.time).localeCompare(String(b.time)) : parseTimeStart(a.time).localeCompare(parseTimeStart(b.time)));
+  const bal={}; let running={};
+  events.forEach(e=>{
+    const key = e.name;
+    bal[key]=(bal[key]||0)+(e.type==='in'?e.qty:-e.qty);
+    if(e.type==='in') running[e.ref]=Math.max(0,bal[key]);
+  });
+  return running;
+}
+
+/* ===================== 渲染 ===================== */
+let invMoreOpen = false;
+let lastOthersLen = 0;
+function renderInventory(){
+  const inv = computeInventory();
+  const grid = document.getElementById('invGrid');
+  const moreBtn = document.getElementById('moreInvBtn');
+  const tableBox = document.getElementById('invMoreTable');
+  if(!inv.length){
+    grid.innerHTML = '<div class="inv-item"><div class="label">暂无物资</div></div>';
+    moreBtn.style.display = 'none';
+    tableBox.innerHTML = '';
+    tableBox.classList.add('collapsed');
+    return;
+  }
+  /* 主物资：优先展示柴油，否则取库存最高者 */
+  const primary = inv.find(m=>m.name==='柴油') || inv[0];
+  const others = inv.filter(m=>m!==primary);
+  lastOthersLen = others.length;
+  const pCls = primary.stock<=100 ? 'warn' : (primary.stock>500 ? 'ok' : '');
+  grid.innerHTML = `<div class="inv-item inv-hero ${pCls}">
+    <div class="hero-left">
+      <div class="label">${esc(primary.name)}<span class="hero-tag">主物资</span></div>
+      <div class="unit">${esc(primary.unit||'')} 实时库存</div>
+    </div>
+    <div class="value">${fmtNum(primary.stock)}</div>
+  </div>`;
+  moreBtn.style.display = '';
+  moreBtn.innerHTML = invMoreOpen ? '收起其他物资 ▴' : ('更多物资（'+others.length+'） ▾');
+  tableBox.classList.toggle('collapsed', !invMoreOpen);
+  if(!others.length){
+    tableBox.innerHTML = '<div class="empty">暂无其他物资，去「＋ 新增」添加吧</div>';
+  } else {
+    tableBox.innerHTML = '<table><thead><tr><th>物资名称</th><th style="text-align:right">当前库存</th><th style="text-align:right">单位</th></tr></thead><tbody>' +
+      others.map(m=>{
+        const cls = m.stock<=100 ? 'warn' : (m.stock>500 ? 'ok' : '');
+        return `<tr class="${cls}"><td>${esc(m.name)}</td><td class="num">${fmtNum(m.stock)}</td><td style="text-align:right">${esc(m.unit||'')}</td></tr>`;
+      }).join('') + '</tbody></table>';
+  }
+  const inQty=inbound.reduce((s,r)=>s+(Number(r.qty)||0),0);
+  const outQty=outbound.reduce((s,r)=>s+(Number(r.qty)||0),0);
+  document.getElementById('statInQty').textContent=fmtNum(inQty);
+  document.getElementById('statOutQty').textContent=fmtNum(outQty);
+  document.getElementById('statInCnt').textContent=inbound.length;
+  document.getElementById('statOutCnt').textContent=outbound.length;
+}
+function toggleInvMore(){
+  invMoreOpen = !invMoreOpen;
+  document.getElementById('invMoreTable').classList.toggle('collapsed', !invMoreOpen);
+  document.getElementById('moreInvBtn').innerHTML = invMoreOpen ? '收起其他物资 ▴' : ('更多物资（'+lastOthersLen+'） ▾');
+}
+
+function renderInbound(){
+  const q=(document.getElementById('searchIn').value||'').trim().toLowerCase();
+  const run=computeRunningStock();
+  let list=inbound.slice().sort((a,b)=> parseTimeStart(b.time)===parseTimeStart(a.time)?String(b.time).localeCompare(String(a.time)):parseTimeStart(b.time).localeCompare(parseTimeStart(a.time)));
+  if(q) list=list.filter(r=>(r.name+r.rec+r.dept+r.note).toLowerCase().includes(q));
+  const recentBox=document.getElementById('listInboundRecent');
+  const allBox=document.getElementById('listInboundAll');
+  if(!list.length){ recentBox.innerHTML='<div class="empty">暂无入库记录</div>'; allBox.innerHTML=''; document.getElementById('inboundAllCount').textContent='0'; return; }
+  recentBox.innerHTML=list.slice(0,5).map(r=>recordCardHTML('inbound',r,run)).join('');
+  allBox.innerHTML=list.map(r=>recordCardHTML('inbound',r,run)).join('');
+  document.getElementById('inboundAllCount').textContent=list.length;
+  if(q) setCollapsed('inbound', false); // 搜索时自动展开全部
+}
+
+function renderOutbound(){
+  const q=(document.getElementById('searchOut').value||'').trim().toLowerCase();
+  let list=outbound.slice().sort((a,b)=> parseTimeStart(b.time)===parseTimeStart(a.time)?String(b.time).localeCompare(String(a.time)):parseTimeStart(b.time).localeCompare(parseTimeStart(a.time)));
+  if(q) list=list.filter(r=>(r.name+r.rec+r.equip+r.note).toLowerCase().includes(q));
+  const run=computeRunningStock();
+  const recentBox=document.getElementById('listOutboundRecent');
+  const allBox=document.getElementById('listOutboundAll');
+  if(!list.length){ recentBox.innerHTML='<div class="empty">暂无领用记录</div>'; allBox.innerHTML=''; document.getElementById('outboundAllCount').textContent='0'; return; }
+  recentBox.innerHTML=list.slice(0,5).map(r=>recordCardHTML('outbound',r,run)).join('');
+  allBox.innerHTML=list.map(r=>recordCardHTML('outbound',r,run)).join('');
+  document.getElementById('outboundAllCount').textContent=list.length;
+  if(q) setCollapsed('outbound', false); // 搜索时自动展开全部
+}
+
+/* 单条记录卡片（两列网格排版，与上一版一致） */
+function recordCardHTML(type, r, run){
+  const isIn = type==='inbound';
+  const grid = isIn ? `
+    <div><span class="k">入库数量：</span><span class="v rc-qty">${fmtNum(r.qty)} ${esc(r.unit||'')}</span></div>
+    <div><span class="k">当时库存：</span><span class="v">${fmtNum(run[r.id]!==undefined?run[r.id]:'')} ${esc(r.unit||'')}</span></div>
+    <div><span class="k">部门：</span><span class="v">${esc(r.dept||'')}</span></div>
+    <div><span class="k">记录人：</span><span class="v">${esc(r.rec||'')}</span></div>
+    ${r.note?`<div class="full"><span class="k">备注：</span><span class="v">${esc(r.note)}</span></div>`:''}` : `
+    <div><span class="k">领用数量：</span><span class="v rc-qty">${fmtNum(r.qty)} ${esc(r.unit||'')}</span></div>
+    <div><span class="k">领用设备：</span><span class="v">${esc(r.equip||'')}</span></div>
+    <div><span class="k">记录人：</span><span class="v">${esc(r.rec||'')}</span></div>
+    <div><span class="k">用途：</span><span class="v">${esc(r.note||'')}</span></div>`;
+  return `<div class="record-card">
+    <div class="rc-head"><span class="rc-name">${esc(r.name||'未命名')}</span><span class="rc-time">${esc(r.time||'')}</span></div>
+    <div class="rc-grid">${grid}</div>
+    <div class="rc-foot"><button onclick="openForm('${type}','${r.id}')">✏️ 编辑</button><button class="del" onclick="delRecord('${type}','${r.id}')">🗑️ 删除</button></div>
+  </div>`;
+}
+
+/* 全部记录折叠/展开 */
+function setCollapsed(type, collapsed){
+  allCollapsed[type]=collapsed;
+  const body=document.getElementById(type==='inbound'?'listInboundAll':'listOutboundAll');
+  const arrow=document.getElementById(type==='inbound'?'inboundArrow':'outboundArrow');
+  body.classList.toggle('collapsed', collapsed);
+  arrow.textContent = collapsed ? '▸' : '▾';
+}
+function toggleAll(type){ setCollapsed(type, !allCollapsed[type]); }
+
+function refreshNameList(){ /* 已改用下拉选项管理，无需 datalist */ }
+
+function renderAll(){ renderInventory(); renderInbound(); renderOutbound(); }
+
+/* ===================== 新增 / 编辑 ===================== */
+function openForm(type, id){
+  document.getElementById('fType').value=type;
+  document.getElementById('fId').value=id||'';
+  const isIn = type==='inbound';
+  document.getElementById('formTitle').firstChild.textContent = (id?'✏️ 编辑':'＋ 新增') + (isIn?'入库':'领用');
+  document.getElementById('fDeptRow').style.display = isIn?'block':'none';
+  document.getElementById('fEquipRow').style.display = isIn?'none':'block';
+  document.getElementById('fQtyLabel').textContent = isIn?'入库数量':'领用数量';
+  document.getElementById('fNoteLabel').textContent = isIn?'备注':'用途 / 备注';
+  const r = id ? (isIn?inbound:outbound).find(x=>x.id===id) : null;
+  document.getElementById('fTime').value = r ? toDTL(r.time) : nowDTL();
+  fillSelect(document.getElementById('fName'),'name', r?r.name:'');
+  fillSelect(document.getElementById('fUnit'),'unit', r?r.unit:'L');
+  document.getElementById('fQty').value = r?r.qty:'';
+  fillSelect(document.getElementById('fDept'),'dept', r?r.dept:'');
+  fillSelect(document.getElementById('fEquip'),'equip', r?r.equip:'');
+  document.getElementById('fRec').value = r?r.rec:'';
+  document.getElementById('fNote').value = r?r.note:'';
+  document.getElementById('formMask').classList.add('show');
+}
+function closeForm(){ document.getElementById('formMask').classList.remove('show'); }
+function saveForm(){
+  const type=document.getElementById('fType').value;
+  const id=document.getElementById('fId').value;
+  const rec={
+    time: fromDTL(document.getElementById('fTime').value) || nowDisp(),
+    name: document.getElementById('fName').value.trim(),
+    unit: document.getElementById('fUnit').value.trim()||'L',
+    qty: document.getElementById('fQty').value,
+    rec: document.getElementById('fRec').value.trim(),
+    note: document.getElementById('fNote').value.trim()
+  };
+  if(type==='inbound') rec.dept=document.getElementById('fDept').value.trim();
+  else rec.equip=document.getElementById('fEquip').value.trim();
+  if(!rec.name){ toast('请填写物资名称'); return; }
+  if(rec.qty===''||isNaN(Number(rec.qty))){ toast('请填写正确的数量'); return; }
+  rec.qty=Number(rec.qty);
+  /* 保存时同步该物资的默认单位，保证下次录入自动对上 */
+  if(rec.name && rec.unit) setMaterialUnit(rec.name, rec.unit);
+  if(id){
+    const arr=type==='inbound'?inbound:outbound;
+    const i=arr.findIndex(x=>x.id===id); if(i>=0) arr[i]={...arr[i],...rec};
+  } else {
+    rec.id=uid(type);
+    (type==='inbound'?inbound:outbound).push(rec);
+  }
+  save(type, type==='inbound'?inbound:outbound);
+  closeForm(); renderAll();
+  toast('已保存');
+}
+function delRecord(type,id){
+  if(!confirm('确定删除这条记录？')) return;
+  if(type==='inbound') inbound=inbound.filter(x=>x.id!==id); else outbound=outbound.filter(x=>x.id!==id);
+  save(type, type==='inbound'?inbound:outbound);
+  renderAll(); toast('已删除');
+}
+
+/* ===================== 同步（导出/导入 JSON） ===================== */
+function openSync(){
+  const t=document.getElementById('cloudStatTip');
+  if(t) t.innerHTML = (CLOUD && sb)
+    ? '🌐 <b>云端同步已开启</b>：所有人打开同一网址即可实时共享、互看更新。'
+    : '📱 <b>当前为本机存储模式</b>（未配置云端）：数据仅存在本机，请用下方导出/导入在队友间同步。';
+  document.getElementById('syncMask').classList.add('show');
+}
+function closeSync(){ document.getElementById('syncMask').classList.remove('show'); }
+
+/* ===================== 帮助（原说明页内容） ===================== */
+const HELP_HTML = `
+  <div class="help-card">
+    <p class="desc">本工具用于 MAKAHA 钻探队物资的<b>入库登记</b>、<b>领用登记</b>与<b>库存管理</b>。团队成员可随时用手机记录，库存自动汇总，低库存自动预警，方便现场物资管控与对账。</p>
+  </div>
+  <div class="help-card">
+    <h2 class="help-h2">✨ 主要功能</h2>
+    <div class="help-feats">
+      <div class="help-feat"><div class="ic">📥</div><div class="t">物资入库</div><div class="d">登记入库明细</div></div>
+      <div class="help-feat"><div class="ic">📤</div><div class="t">物资领用</div><div class="d">登记领用去向</div></div>
+      <div class="help-feat"><div class="ic">📊</div><div class="t">库存预警</div><div class="d">低库存红色提醒</div></div>
+      <div class="help-feat"><div class="ic">👥</div><div class="t">多人协作</div><div class="d">就地记录·导出同步</div></div>
+    </div>
+  </div>
+  <div class="help-card">
+    <h2 class="help-h2">🚀 使用步骤</h2>
+    <ol class="help-steps">
+      <li>打开应用，底部切换「物资入库 / 物资领用」</li>
+      <li>点「＋ 新增」填写时间、物资、数量等信息</li>
+      <li>顶部库存总览自动汇总，低库存红色预警</li>
+      <li>点右上角「⇅ 同步数据」导出 JSON 发给队友，队友导入即同步</li>
+    </ol>
+  </div>
+  <div class="help-tip">数据保存在本机浏览器，离线可用<br>通过导出 / 导入 JSON 实现多人同步</div>
+`;
+function openHelp(){ document.getElementById('helpBody').innerHTML = HELP_HTML; document.getElementById('helpMask').classList.add('show'); }
+function closeHelp(){ document.getElementById('helpMask').classList.remove('show'); }
+
+/* ===================== 下拉选项管理 ===================== */
+function openOpt(){ renderOptManager(); document.getElementById('optMask').classList.add('show'); }
+function closeOpt(){ document.getElementById('optMask').classList.remove('show'); }
+function renderOptManager(){
+  const blocks=[['name','物资名称'],['dept','部门'],['equip','领用设备'],['unit','单位']];
+  document.getElementById('optBody').innerHTML = blocks.map(([k,label])=>{
+    const a=getOpts(k);
+    const chips = a.length ? a.map(o=>`<span class="opt-chip">${esc(o)}<button type="button" onclick="delOptAndRender('${k}','${esc(o).replace(/'/g,"\\'")}')">×</button></span>`).join('') : '<span class="opt-empty">（暂无，可在下方添加）</span>';
+    return `<div class="opt-block">
+      <div class="opt-title">${label}</div>
+      <div class="opt-list">${chips}</div>
+      <div class="opt-add"><input id="optAdd_${k}" placeholder="新增${label}"><button type="button" onclick="addOptAndRender('${k}')">添加</button></div>
+    </div>`;
+  }).join('');
+}
+function delOptAndRender(k,v){ delOpt(k,v); cloudPush(); renderOptManager(); renderAll(); toast('已删除选项'); }
+function addOptAndRender(k){ const inp=document.getElementById('optAdd_'+k); const v=inp.value.trim(); if(!v) return; addOpt(k,v); cloudPush(); renderOptManager(); renderAll(); toast('已添加：'+v); }
+
+function exportAll(){
+  const payload={ app:'ztk-material', version:1, exportedAt:new Date().toISOString(), inbound, outbound };
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const d=new Date();
+  const fn='物资台账_'+d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'.json';
+  downloadBlob(blob,fn);
+  toast('已导出全部数据');
+}
+function triggerImport(){ document.getElementById('importFile').click(); }
+function doImport(e){
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      const data=JSON.parse(reader.result);
+      let nin=data.inbound||[], nout=data.outbound||[];
+      if(!Array.isArray(nin)||!Array.isArray(nout)) throw new Error('格式不对');
+      // 合并：以 id 为准，存在则更新，不存在则新增
+      let addIn=0, updIn=0, addOut=0, updOut=0;
+      nin.forEach(r=>{ if(!r.id) r.id=uid('inbound'); const i=inbound.findIndex(x=>x.id===r.id); if(i>=0){inbound[i]=r;updIn++;} else {inbound.push(r);addIn++;} });
+      nout.forEach(r=>{ if(!r.id) r.id=uid('outbound'); const i=outbound.findIndex(x=>x.id===r.id); if(i>=0){outbound[i]=r;updOut++;} else {outbound.push(r);addOut++;} });
+      save('inbound',inbound); save('outbound',outbound);
+      syncOptsFromData(); ensureMaterialUnits();   /* 导入后刷新下拉选项与物资默认单位 */
+      renderAll(); closeSync();
+      toast(`导入完成：入库 +${addIn}/更新${updIn}，领用 +${addOut}/更新${updOut}`);
+    }catch(err){ alert('导入失败：文件格式不正确\n'+err.message); }
+    e.target.value='';
+  };
+  reader.readAsText(file);
+}
+
+function downloadBlob(blob,filename){
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=filename; document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url); a.remove();},100);
+}
+
+/* ===================== CSV 导出 ===================== */
+function exportCSV(type){
+  const arr=type==='inbound'?inbound:outbound;
+  const cols = type==='inbound'
+    ? [['time','时间'],['name','物资名称'],['unit','单位'],['qty','数量'],['dept','部门'],['rec','记录人'],['note','备注']]
+    : [['time','时间'],['name','物资名称'],['unit','单位'],['qty','数量'],['equip','领用设备'],['rec','记录人'],['note','用途']];
+  const escC=v=>`"${String(v==null?'':v).replace(/"/g,'""')}"`;
+  let csv='\uFEFF'+cols.map(c=>escC(c[1])).join(',')+'\n';
+  arr.forEach(r=>{ csv+=cols.map(c=>escC(r[c[0]])).join(',')+'\n'; });
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const d=new Date();
+  const fn=(type==='inbound'?'物资入库':'物资领用')+'_'+d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'.csv';
+  downloadBlob(blob,fn);
+  toast('已导出 CSV');
+}
+
+/* ===================== Tab 切换 ===================== */
+function switchTab(type){
+  document.getElementById('sec-inbound').classList.toggle('active', type==='inbound');
+  document.getElementById('sec-outbound').classList.toggle('active', type==='outbound');
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active', (i===0)===(type==='inbound')));
+}
+
+/* 点击遮罩关闭 */
+document.getElementById('formMask').addEventListener('click',e=>{ if(e.target.id==='formMask') closeForm(); });
+document.getElementById('syncMask').addEventListener('click',e=>{ if(e.target.id==='syncMask') closeSync(); });
+document.getElementById('optMask').addEventListener('click',e=>{ if(e.target.id==='optMask') closeOpt(); });
+document.getElementById('helpMask').addEventListener('click',e=>{ if(e.target.id==='helpMask') closeHelp(); });
+
+bootstrap();
+
+function closeInstallTip(){
+  try{ localStorage.setItem('installTipDismissed','1'); }catch(e){}
+  const tip = document.getElementById('installTip');
+  if(tip) tip.style.display = 'none';
+}
+function maybeShowInstallTip(){
+  try{ if(localStorage.getItem('installTipDismissed')) return; }catch(e){}
+  const standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  if(standalone) return;
+  const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if(!isMobile) return;
+  const tip = document.getElementById('installTip');
+  if(tip) tip.style.display = 'flex';
+}
+</script>
+<script>
+/* 注册 Service Worker：实现离线可用 + 可被「添加到主屏幕」安装 */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('./sw.js').catch(function(err){
+      console.warn('SW 注册失败：', err);
+    });
+  });
+}
+</script>
+</body>
+</html>
